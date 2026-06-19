@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Motor Monitoring HMI</title>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body{
+            font-family: Arial;
+            background:#f2f2f2;
+            margin:20px;
+        }
+
+        h1{
+            text-align:center;
+        }
+
+        .container{
+            display:flex;
+            gap:20px;
+            justify-content:center;
+            flex-wrap:wrap;
+        }
+
+        .card{
+            width:220px;
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            box-shadow:0 0 10px rgba(0,0,0,0.2);
+            text-align:center;
+        }
+
+        .value{
+            font-size:32px;
+            font-weight:bold;
+        }
+
+        #chartContainer{
+            margin-top:30px;
+            background:white;
+            padding:20px;
+            border-radius:10px;
+        }
+
+        #status{
+            text-align:center;
+            font-weight:bold;
+            margin-bottom:20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Motor DC Monitoring Dashboard</h1>
+
+<div id="status">
+    MQTT: Connecting...
+</div>
+
+<div class="container">
+
+    <div class="card">
+        <h2>RPM</h2>
+        <div class="value" id="rpm">0</div>
+    </div>
+
+    <div class="card">
+        <h2>Tegangan</h2>
+        <div class="value" id="voltage">0 V</div>
+    </div>
+
+    <div class="card">
+        <h2>Arus</h2>
+        <div class="value" id="current">0 A</div>
+    </div>
+
+</div>
+
+<div id="chartContainer">
+    <canvas id="rpmChart"></canvas>
+</div>
+
+<script>
+
+const client = mqtt.connect(
+    'ws://127.0.0.1:15675/ws'
+);
+
+client.on('connect', ()=>{
+
+    console.log("MQTT Connected");
+
+    document.getElementById("status")
+        .innerHTML = "MQTT: Connected";
+
+    client.subscribe("#", (err)=> {
+
+        if(!err){
+
+            console.log("Subscibe Semua Topic Berhasil");
+        }else{
+
+            console.log(err);
+        }
+    });
+
+});
+
+client.on('error', (err)=>{
+
+    console.log("MQTT Error:", err);
+
+    document.getElementById("status")
+        .innerHTML = "MQTT: Error";
+
+});
+
+client.on('reconnect', ()=>{
+
+    console.log("Reconnecting...");
+});
+
+client.on('close', ()=> {
+    
+    console.log("Connection closed");
+});
+
+client.on('offline', ()=>{
+
+    console.log("MQTT Offline");
+});
+
+const ctx =
+document.getElementById('rpmChart');
+
+const rpmChart = new Chart(ctx, {
+
+    type:'line',
+
+    data:{
+        labels:[],
+        datasets:[{
+            label:'RPM',
+            data:[]
+        }]
+    },
+
+    options:{
+        responsive:true,
+        animation:false
+    }
+
+});
+
+client.on('message',(topic,message)=>{
+
+    console.log("TOPIC:", topic);
+    console.log("MESSAGE", message.toString());
+
+    let data = JSON.parse(
+        message.toString()
+    );
+
+    document.getElementById("rpm")
+        .innerHTML = data.rpm;
+
+    document.getElementById("voltage")
+        .innerHTML =
+        data.voltage.toFixed(2) + " V";
+
+    document.getElementById("current")
+        .innerHTML =
+        data.current.toFixed(2) + " A";
+
+    rpmChart.data.labels.push(
+        new Date().toLocaleTimeString()
+    );
+
+    rpmChart.data.datasets[0]
+        .data.push(data.rpm);
+
+    if(rpmChart.data.labels.length>30)
+    {
+        rpmChart.data.labels.shift();
+        rpmChart.data.datasets[0]
+            .data.shift();
+    }
+
+    rpmChart.update();
+
+});
+
+</script>
+
+</body>
+</html>
