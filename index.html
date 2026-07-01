@@ -62,6 +62,24 @@
     MQTT: Connecting...
 </div>
 
+<div id="lastUpdate"
+    style="
+        text-align:center;
+        margin-bottom:20px;
+        color:#555;
+     ">
+    Last Update: -
+</div>
+
+<div id="motorStatus"
+    style="
+        text-align:center;
+        font-weight:bold;
+        color:red;
+        margin-bottom:20px;
+    ">
+</div>
+
 <div class="container">
 
     <div class="card">
@@ -79,6 +97,10 @@
         <div class="value" id="current">0 A</div>
     </div>
 
+    <div class="card">
+        <h2>PWM</h2>
+        <div class="value" id="pwm"> 0 %</div>
+    </div>
 </div>
 
 <div id="chartContainer">
@@ -161,6 +183,8 @@ const rpmChart = new Chart(ctx, {
 
 });
 
+let timeout;
+
 client.on('message',(topic,message)=>{
 
     console.log("TOPIC:", topic);
@@ -169,6 +193,30 @@ client.on('message',(topic,message)=>{
     let data = JSON.parse(
         message.toString()
     );
+
+    clearTimeout(timeout);
+
+    document.getElementById("motorStatus")
+    .innerHTML =
+    "Motor Status : ONLINE";
+
+    document.getElementById("motorStatus")
+    .style.color = "green";
+
+    timeout = setTimeout(()=>{
+
+        document.getElementById("motorStatus")
+        .innerHTML = 
+        "Motor Status : OFFLINE";
+
+        document.getElementById("motorStatus")
+        .style.color = "red";
+    },5000);
+
+    document.getElementById("lastUpdate")
+        .innerHTML =
+        "Last Update : " +
+        new Date().toLocaleString('id-ID');
 
     document.getElementById("rpm")
         .innerHTML = data.rpm;
@@ -180,6 +228,10 @@ client.on('message',(topic,message)=>{
     document.getElementById("current")
         .innerHTML =
         data.current.toFixed(2) + " A";
+
+    document.getElementById("pwm")
+        .innerHTML = 
+        data.pwm + " %";
 
     rpmChart.data.labels.push(
         new Date().toLocaleTimeString()
